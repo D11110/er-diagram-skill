@@ -1,0 +1,10 @@
+{
+  "name": "er-diagram-skill-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripts de er-diagram-skill: extraer un esquema, elegir tablas y generar un diagrama ER interactivo en HTML.",
+  "license": "MIT",
+  "dependencies": {
+    "elkjs": "0.9.3"
+  }
+}

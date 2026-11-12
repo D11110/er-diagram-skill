@@ -1,0 +1,12 @@
+{
+  "title": "Modelo de Datos de la Tienda",
+  "modules": [
+    { "id": "ventas", "name": "Ventas", "match": "^VEN_" },
+    { "id": "inventario", "name": "Inventario", "match": "^INV_" },
+    { "id": "clientes", "name": "Clientes", "match": "^CLI_" },
+    { "id": "general", "name": "Catálogos generales", "match": "^GEN_" },
+    { "id": "sistema", "name": "Sistema", "match": ".*" }
+  ],
+  "hubs": ["GEN_ESTADOS"],
+  "hubsLabel": "Estados"
+}

@@ -1,0 +1,8 @@
+node_modules/
+*.log
+# carpetas de trabajo y salidas locales
+work/
+capturas/
+*.local.json
+schema*.json
+!examples/*.json
