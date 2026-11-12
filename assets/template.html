@@ -92,7 +92,28 @@ button, input { font: inherit; color: inherit; }
 .zoom-level { position: absolute; left: 12px; bottom: 12px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; }
 .busy { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 70%, transparent); font-size: 13px; color: var(--muted); }
 
-/* SVG */
+/* Exportar PNG */
+.export { position: relative; }
+.export > summary {
+  list-style: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 12.5px; user-select: none;
+}
+.export > summary::-webkit-details-marker { display: none; }
+.export > summary svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.export[open] > summary { border-color: var(--hi); }
+.export-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 268px; box-sizing: border-box; padding: 14px;
+  display: grid; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .16);
+}
+.export-pop .row { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+.export-pop .seg { justify-self: start; }
+.export-pop .seg label { padding: 5px 11px; }
+.export-pop .size { font-size: 12px; color: var(--muted); line-height: 1.45; font-variant-numeric: tabular-nums; }
+.export-pop .size.bad { color: var(--mod-10); }
+.export-pop .go { height: 34px; border: 0; border-radius: 8px; background: var(--hi); color: var(--surface); cursor: pointer; font-weight: 600; font-size: 12.5px; }
+.export-pop .go:disabled { opacity: .55; cursor: progress; }
+
+/* SVG:start — estas reglas también se incrustan en el PNG exportado */
 .module-box { fill: color-mix(in srgb, var(--mc) 6%, transparent); stroke: color-mix(in srgb, var(--mc) 55%, transparent); stroke-width: 1.2; }
 .module.ghost .module-box { fill: transparent; stroke-dasharray: 6 5; }
 .module-label { font: 600 var(--ml, 12px) var(--font-ui); letter-spacing: .08em; text-transform: uppercase; fill: var(--mc); paint-order: stroke; stroke: var(--bg); stroke-width: calc(var(--ml, 12px) / 4); }
@@ -122,6 +143,7 @@ button, input { font: inherit; color: inherit; }
 #world.has-sel .tbl:not(.sel):not(.nb) { opacity: .25; }
 #world.has-sel .edge:not(.hi) { opacity: .1; }
 #world.has-sel .module { opacity: .6; }
+/* SVG:end */
 
 /* Panel */
 .panel { min-width: 0; min-height: 0; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px 20px; box-sizing: border-box; }
@@ -172,6 +194,7 @@ button, input { font: inherit; color: inherit; }
   .top h1 { font-size: 16px; }
   .search { flex-basis: 100%; }
   .zoom { right: calc(12px + env(safe-area-inset-right, 0px)); }
+  .export-pop { position: fixed; top: auto; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .panel { transition: none; } }
 </style>
@@ -196,6 +219,27 @@ button, input { font: inherit; color: inherit; }
       </div>
       <label class="toggle" for="hubs" id="hubs-wrap"><input type="checkbox" id="hubs"> <span id="hubs-label">FK a catálogos comunes</span> <span class="n" id="hubs-n"></span></label>
       <button class="panel-btn" id="panel-btn" type="button">Leyenda y detalle</button>
+      <details class="export" id="export">
+        <summary><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"></path></svg>Exportar PNG</summary>
+        <div class="export-pop">
+          <div class="row"><span id="xs-l">Resolución</span>
+            <div class="seg" role="radiogroup" aria-labelledby="xs-l">
+              <input type="radio" name="xscale" id="xs-1" value="1"><label for="xs-1">1×</label>
+              <input type="radio" name="xscale" id="xs-2" value="2" checked><label for="xs-2">2×</label>
+              <input type="radio" name="xscale" id="xs-3" value="3"><label for="xs-3">3×</label>
+              <input type="radio" name="xscale" id="xs-4" value="4"><label for="xs-4">4×</label>
+            </div>
+          </div>
+          <div class="row"><span id="xt-l">Tema de la imagen</span>
+            <div class="seg" role="radiogroup" aria-labelledby="xt-l">
+              <input type="radio" name="xtheme" id="xt-light" value="light" checked><label for="xt-light">Claro</label>
+              <input type="radio" name="xtheme" id="xt-dark" value="dark"><label for="xt-dark">Oscuro</label>
+            </div>
+          </div>
+          <div class="size" id="xsize" aria-live="polite"></div>
+          <button type="button" class="go" id="xgo">Descargar PNG</button>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -311,8 +355,9 @@ const DATA = /*NGS:DATA*/;
     if (state.sel && !shown.has(state.sel)) state.sel = null;
     render();
     if (opt.fit || !opt.keepView) fit(); else applyView();
-    if (state.sel) select(state.sel, { center: !!opt.center }); else showOverview();
+    if (state.sel) select(state.sel, { center: !!opt.center }); else { clearSel(); showOverview(); }
     busy.hidden = true;
+    updateExportSize();
   }
 
   /* ---------- render SVG ---------- */
@@ -524,6 +569,168 @@ const DATA = /*NGS:DATA*/;
   svg.addEventListener('pointerup', endPtr);
   svg.addEventListener('pointercancel', endPtr);
   window.addEventListener('resize', () => { if (state.layout && !state.sel) fit(); });
+
+  /* ---------- exportar PNG ----------
+     Se arma un SVG aparte con todo el diagrama de la vista actual (módulo, columnas y FK a catálogos tal como estén),
+     sin la selección ni el zoom, con las reglas CSS del SVG, los colores del tema elegido y las fuentes incrustadas.
+     Luego se rasteriza en un canvas al tamaño final, así el texto y las líneas salen nítidos a cualquier escala. */
+  const XM = 16, XH = 60;                       // margen exterior y alto de la cabecera del PNG
+  const MAX_SIDE = 16384, MAX_AREA = 100e6;     // límites seguros del canvas en Chrome, Edge, Firefox y Safari
+  const XVARS = ['bg', 'surface', 'surface-2', 'ink', 'muted', 'line', 'edge', 'hi', 'hi-tint', 'dot', 'font-ui', 'font-code']
+    .concat(Array.from({ length: 12 }, (_, i) => 'mod-' + i));
+  const XFONTS = { title: '600 22px "IBM Plex Sans", system-ui, sans-serif', sub: '400 13px "IBM Plex Sans", system-ui, sans-serif' };
+  const fmtInt = n => String(n);
+  const slug = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'diagrama';
+
+  function exportHeader() {
+    const L = state.layout;
+    const nT = Object.keys(L.nodes).length, nE = state.pairs.size;
+    const parts = [];
+    if (state.focus) parts.push('Módulo ' + MOD[state.focus].name);
+    parts.push(`${nT} tabla${nT === 1 ? '' : 's'}`, `${nE} relaci${nE === 1 ? 'ón' : 'ones'}`, state.mode === 'all' ? 'todas las columnas' : 'solo llaves');
+    if (hubFks.length && !state.hubs) parts.push(`sin las FK a ${DATA.hubsLabel}`);
+    parts.push(`${DATA.source}, extraído el ${fmtDate(DATA.extracted)}`);
+    const title = DATA.title, sub = parts.join(' · ');
+    ctx.font = XFONTS.title; const tw = ctx.measureText(title).width;
+    ctx.font = XFONTS.sub; const sw = ctx.measureText(sub).width;
+    return { title, sub, w: Math.max(tw, sw) + 2 * (XM + 24) };
+  }
+  function exportSize(scale) {
+    const L = state.layout; if (!L) return null;
+    const hdr = exportHeader();
+    const W = Math.ceil(Math.max(L.width + 2 * XM, hdr.w)), H = Math.ceil(L.height + 2 * XM + XH);
+    const s = Math.min(scale, MAX_SIDE / W, MAX_SIDE / H, Math.sqrt(MAX_AREA / (W * H)));
+    return { W, H, s, pw: Math.round(W * s), ph: Math.round(H * s), hdr };
+  }
+  function themeVars(theme) {
+    const root = document.documentElement, prev = root.getAttribute('data-theme');
+    root.setAttribute('data-theme', theme);
+    const cs = getComputedStyle(root);
+    const out = XVARS.map(v => `--${v}:${cs.getPropertyValue('--' + v).trim()}`).join(';');
+    if (prev === null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', prev);
+    return out;
+  }
+  function svgRules() {
+    const css = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+    const a = css.indexOf('/* SVG:start'), b = css.indexOf('/* SVG:end */');
+    return a >= 0 && b > a ? css.slice(a, b) : '';
+  }
+  // Una imagen SVG no puede bajar fuentes: se incrustan como data: las de Google Fonts (solo latin y latin-ext).
+  let fontCss = null;
+  const asDataUrl = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+  async function embeddedFonts() {
+    if (fontCss !== null) return fontCss;
+    const link = document.querySelector('link[rel="stylesheet"][href*="fonts.googleapis.com"]');
+    if (!link || !document.fonts || !document.fonts.check(FONTS.col)) return (fontCss = '');
+    try {
+      const css = await (await fetch(link.href)).text();
+      const blocks = css.match(/(?:\/\*[^*]*\*\/\s*)?@font-face\s*\{[^}]*\}/g) || [];
+      const keep = blocks.some(b => b.startsWith('/*')) ? blocks.filter(b => /^\/\*\s*latin(-ext)?\s*\*\//.test(b)) : blocks;
+      const faces = await Promise.all(keep.map(async b => {
+        const m = b.match(/url\((['"]?)([^'")]+)\1\)/); if (!m) return '';
+        const r = await fetch(m[2]); if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await asDataUrl(new Blob([await r.arrayBuffer()], { type: 'font/woff2' }));
+        return b.replace(/^\/\*[^*]*\*\/\s*/, '').replace(m[0], `url(${data})`);
+      }));
+      fontCss = faces.join('\n');
+    } catch (err) {
+      console.warn('Exportar PNG: no se pudieron incrustar las fuentes IBM Plex; se usan las del sistema.', err);
+      fontCss = '';
+    }
+    return fontCss;
+  }
+  async function renderPng({ scale = 2, theme = 'light' } = {}) {
+    if (!state.layout || !busy.hidden) throw new Error('El diagrama todavía se está acomodando.');
+    const z = exportSize(Number(scale) || 2);
+    const fonts = await embeddedFonts();
+    const g = world.cloneNode(true);
+    g.removeAttribute('class');
+    g.setAttribute('transform', `translate(${XM},${XM + XH})`);
+    g.setAttribute('style', '--ml:14px');
+    for (const n of g.querySelectorAll('title, .edge-hit')) n.remove();
+    for (const n of g.querySelectorAll('.sel, .nb, .hi, .on')) n.classList.remove('sel', 'nb', 'hi', 'on');
+    const ser = new XMLSerializer();
+    const doc = `<svg xmlns="http://www.w3.org/2000/svg" width="${z.pw}" height="${z.ph}" viewBox="0 0 ${z.W} ${z.H}">` +
+      `<style>${fonts}\nsvg{${themeVars(theme === 'dark' ? 'dark' : 'light')}}\n${svgRules()}\n` +
+      `.x-title{font:600 22px var(--font-ui);fill:var(--ink)}.x-sub{font:400 13px var(--font-ui);fill:var(--muted)}</style>` +
+      ser.serializeToString(svg.querySelector('defs')) +
+      `<rect width="${z.W}" height="${z.H}" style="fill:var(--bg)"></rect>` +
+      `<text class="x-title" x="${XM + 24}" y="${XM + 30}">${esc(z.hdr.title)}</text>` +
+      `<text class="x-sub" x="${XM + 24}" y="${XM + 54}">${esc(z.hdr.sub)}</text>` +
+      ser.serializeToString(g) + '</svg>';
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = () => rej(new Error('El navegador no pudo dibujar el SVG del diagrama.'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(doc);
+    });
+    if (img.decode) await img.decode().catch(() => {});
+    const cv = document.createElement('canvas');
+    cv.width = z.pw; cv.height = z.ph;
+    const c2 = cv.getContext('2d');
+    if (!c2) throw new Error('El navegador no pudo crear un lienzo de ese tamaño; baja la resolución.');
+    c2.drawImage(img, 0, 0, z.pw, z.ph);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    cv.width = cv.height = 0;
+    if (!blob) throw new Error('El navegador no pudo generar un PNG de ese tamaño; baja la resolución.');
+    const name = slug(DATA.title + (state.focus ? ' ' + MOD[state.focus].name : '')) + '.png';
+    return { blob, name, width: z.pw, height: z.ph, scale: z.s };
+  }
+  async function downloadPng(opts) {
+    const r = await renderPng(opts);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(r.blob); a.download = r.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    return { name: r.name, width: r.width, height: r.height, scale: r.scale, bytes: r.blob.size };
+  }
+
+  const xsize = $('xsize'), xgo = $('xgo');
+  const xopt = () => ({
+    scale: Number(document.querySelector('input[name="xscale"]:checked').value),
+    theme: document.querySelector('input[name="xtheme"]:checked').value,
+  });
+  function updateExportSize() {
+    const z = exportSize(xopt().scale); if (!z) return;
+    xsize.classList.remove('bad');
+    xsize.textContent = `${fmtInt(z.pw)} × ${fmtInt(z.ph)} px, con la vista actual completa` +
+      (z.s < xopt().scale - 1e-6 ? ` (se redujo a ${z.s.toFixed(2)}× por el límite del navegador)` : '') + '.';
+  }
+  for (const r of document.querySelectorAll('input[name="xscale"]')) r.addEventListener('change', updateExportSize);
+  const xdet = $('export');
+  xdet.addEventListener('toggle', updateExportSize);
+  document.addEventListener('pointerdown', e => { if (xdet.open && !xdet.contains(e.target)) xdet.open = false; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && xdet.open) { xdet.open = false; xdet.querySelector('summary').focus(); } });
+  xgo.addEventListener('click', async () => {
+    if (xgo.disabled) return;
+    xgo.disabled = true; xgo.textContent = 'Generando…';
+    try {
+      const r = await downloadPng(xopt());
+      xsize.textContent = `Listo: ${r.name}, ${fmtInt(r.width)} × ${fmtInt(r.height)} px, ${(r.bytes / 1048576).toFixed(1)} MB.`;
+    } catch (err) {
+      xsize.classList.add('bad'); xsize.textContent = 'No se pudo exportar: ' + (err.message || err);
+    } finally { xgo.disabled = false; xgo.textContent = 'Descargar PNG'; }
+  });
+
+  // API para automatizar (scripts/export-png.js la usa con Playwright).
+  window.erDiagram = {
+    modules: DATA.modules.map(m => ({ id: m.id, name: m.name })),
+    async setView({ mode, hubs, module } = {}) {
+      if (mode) { if (!['keys', 'all'].includes(mode)) throw new Error('mode debe ser keys o all'); state.mode = mode; $('mode-' + mode).checked = true; }
+      if (hubs !== undefined) { state.hubs = !!hubs; $('hubs').checked = !!hubs; }
+      if (module !== undefined) {
+        const key = module ? String(module).toLowerCase() : null;
+        const m = key ? DATA.modules.find(x => x.id.toLowerCase() === key || x.name.toLowerCase() === key) : null;
+        if (key && !m) throw new Error(`No existe el módulo "${module}". Hay: ${DATA.modules.map(x => x.id).join(', ')}`);
+        state.focus = m ? m.id : null;
+        for (const b of chips.children) b.setAttribute('aria-pressed', String((b.dataset.m || null) === state.focus));
+      }
+      state.sel = null;
+      await relayout({ fit: true });
+    },
+    renderPng,
+    downloadPng,
+  };
 
   /* ---------- arranque: medir con las fuentes reales, no con las de respaldo ---------- */
   showOverview();

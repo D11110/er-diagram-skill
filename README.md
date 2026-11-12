@@ -18,7 +18,8 @@ Un skill para agentes de IA (Claude Code, Codex, Gemini CLI, Cursor o cualquiera
    - zoom y arrastre;
    - líneas pata de gallo;
    - un panel con comentarios, columnas, FK salientes y entrantes;
-   - tema claro y oscuro, y vista para teléfono.
+   - tema claro y oscuro, y vista para teléfono;
+   - botón **Exportar PNG** de alta resolución (1× a 4×, tema claro u oscuro) con la vista actual.
 5. **Verifica el layout** (que no haya tablas encimadas ni líneas mal ancladas) y, si tienes Playwright, toma capturas.
 
 ## Instalación
@@ -59,6 +60,23 @@ node verify.js --schema /tmp/schema.json --config ../examples/tienda.config.json
 
 Abre `/tmp/tienda.html` en el navegador.
 
+## Exportar a PNG
+
+En la página, **Exportar PNG** descarga la vista actual completa (módulo, columnas y FK tal como estén) con cabecera y fuentes incrustadas. Para generarlos por línea de comandos, por ejemplo uno por módulo para un documento, usa Playwright:
+
+```bash
+npm i -D playwright && npx playwright install chromium   # una vez
+node export-png.js --html /tmp/tienda.html --out /tmp/png/tienda.png --scale 3 --each-module
+```
+
+| Opción | Efecto |
+|---|---|
+| `--scale 1..4` | Resolución (por defecto 2). Se reduce sola si pasa de 16384 px por lado o 100 Mpx |
+| `--theme light\|dark` | Tema de la imagen (por defecto claro) |
+| `--mode keys\|all` | Solo llaves (por defecto) o todas las columnas |
+| `--hubs` | Incluye las FK a catálogos comunes |
+| `--module VEN,INV` / `--each-module` | Un PNG por módulo indicado, o el completo más uno por cada módulo |
+
 ## Oracle en vivo
 
 ```bash
@@ -88,7 +106,7 @@ En los patrones, `%` es comodín y `_` es **literal**, así que `VEN_%` signific
 
 ```
 SKILL.md                 instrucciones para el agente
-scripts/                 extract-oracle, from-ddl, select-tables, init-config, build, verify
+scripts/                 extract-oracle, from-ddl, select-tables, init-config, build, verify, export-png
 scripts/lib/             núcleo del layout (compartido node/navegador), config y utilidades
 assets/template.html     la página interactiva
 references/              formato de schema.json/config y guía EF Core/DDL

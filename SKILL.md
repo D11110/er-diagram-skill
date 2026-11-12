@@ -1,6 +1,6 @@
 ---
 name: er-diagram-skill
-description: Genera un diagrama entidad-relación (ER) interactivo de una base de datos, en un solo archivo HTML. Toma el esquema del diccionario de Oracle (solo SELECT por sqlplus), de un script DDL (Oracle, SQL Server, PostgreSQL, MySQL) o de un modelo EF Core. Lista las tablas encontradas para que el usuario elija cuáles diagramar (o las filtre con patrones tipo LIKE '%VEN%') y las agrupa por módulos, con búsqueda, zoom y panel de columnas y FK. Úsalo siempre que pidan un diagrama ER, un modelo de datos, un "modelo entidad-relación", "diagramar la base", "ver las tablas y sus relaciones" o "documentar el esquema". También cuando Toad Data Modeler, SQL Developer Data Modeler u otra herramienta de modelado falle o no esté disponible.
+description: Genera un diagrama entidad-relación (ER) interactivo de una base de datos, en un solo archivo HTML. Toma el esquema del diccionario de Oracle (solo SELECT por sqlplus), de un script DDL (Oracle, SQL Server, PostgreSQL, MySQL) o de un modelo EF Core. Lista las tablas encontradas para que el usuario elija cuáles diagramar (o las filtre con patrones tipo LIKE '%VEN%') y las agrupa por módulos, con búsqueda, zoom, panel de columnas y FK y exportación a PNG de alta resolución. Úsalo siempre que pidan un diagrama ER, un modelo de datos, un "modelo entidad-relación", "diagramar la base", "ver las tablas y sus relaciones" o "documentar el esquema". También cuando Toad Data Modeler, SQL Developer Data Modeler u otra herramienta de modelado falle o no esté disponible, o cuando pidan el diagrama como imagen (PNG) para un documento o una presentación.
 ---
 
 # er-diagram-skill: diagrama ER interactivo desde el esquema real
@@ -10,7 +10,8 @@ Este skill produce **un archivo `.html` autocontenido** con el diagrama ER de la
 - tablas agrupadas por módulo, columnas PK/FK y líneas pata de gallo;
 - búsqueda, filtro por módulo y vista "solo llaves / todas las columnas";
 - zoom y arrastre;
-- un panel con el comentario, las columnas y las relaciones de la tabla elegida.
+- un panel con el comentario, las columnas y las relaciones de la tabla elegida;
+- un botón para exportar la vista a PNG de alta resolución.
 
 Funciona en tema claro y oscuro y en teléfono. El layout lo calcula **elkjs** (ELK layered) en el navegador.
 
@@ -19,7 +20,7 @@ Todo el trabajo pesado lo hacen los scripts de Node en `scripts/`. Tu rol como a
 1. elegir la fuente del esquema;
 2. **mostrarle al usuario qué tablas hay y dejar que decida**;
 3. darles nombres de negocio a los módulos;
-4. verificar y entregar.
+4. verificar y entregar (el HTML y, si lo piden, los PNG).
 
 No dibujes nada a mano.
 
@@ -33,7 +34,7 @@ Requisitos:
 
 - Node 18 o superior.
 - Para Oracle en vivo, `sqlplus` en el PATH.
-- Playwright solo si quieres las capturas de verificación (opcional).
+- Playwright solo para las capturas de verificación y para exportar PNG desde la línea de comandos (opcional).
 
 Trabaja en una carpeta de trabajo (`<trabajo>/`) **fuera del repositorio del usuario**: los archivos intermedios no deben aparecer en su control de versiones.
 
@@ -153,10 +154,33 @@ node scripts/verify.js --schema <trabajo>/schema.json --config <trabajo>/diagram
   - **Mira las capturas**: los módulos deben leerse, la selección debe verse y el panel no debe quedar cortado.
   - Haz una sola pasada de correcciones; no entres en un ciclo.
 
+## Paso 5b: exportar a PNG (si lo piden para documentos o presentaciones)
+
+La página trae el botón **Exportar PNG** en la barra. Exporta la vista actual completa, con el módulo, las columnas y las FK a catálogos tal como estén. Deja fuera la selección y el zoom. Antes de descargar, el usuario elige:
+
+- **Resolución**: 1×, 2× (la predeterminada), 3× o 4×.
+- **Tema**: claro u oscuro.
+
+Lleva una cabecera con el título, el filtro y la fuente. Las fuentes van incrustadas, así que el texto sale nítido a cualquier escala.
+
+Para generarlos sin abrir el navegador, por ejemplo uno por módulo para un documento, usa:
+
+```bash
+PLAYWRIGHT_PATH=<ruta>/node_modules/playwright \
+node scripts/export-png.js --html <trabajo>/modelo-er.html --out <trabajo>/png/modelo-er.png \
+  [--scale 2] [--theme light|dark] [--mode keys|all] [--hubs] [--module VEN,INV | --each-module]
+```
+
+- **`--each-module`** genera el diagrama completo y además un PNG por módulo: `modelo-er-<modulo>.png`.
+- **Límite del canvas**: 16384 px por lado y 100 Mpx en total. Si la imagen lo pasa, la escala se reduce sola y el script lo avisa. Un esquema de 70 tablas con todas las columnas queda en unos 1.4×; por módulo sí cabe 3× o 4×.
+- **Fuentes**: se incrustan desde Google Fonts. Sin internet, salen las del sistema y el script avisa.
+- **Mira al menos un PNG** antes de entregarlo.
+
 ## Paso 6: entregar
 
 - **Siempre**: la ruta absoluta del `.html`. Se abre con doble clic en cualquier navegador.
-- **Si tu entorno puede publicar páginas**: genera además una versión con `--fragment` y publícala.
+- **Si tu entorno puede publicar páginas**: genera además una versión con `--fragment` y publícala. Si el visor bloquea las descargas, el botón Exportar PNG no funciona ahí; usa el `.html` local o `export-png.js`.
+- **Si pidieron imágenes**: las rutas absolutas de los PNG, con su tamaño en píxeles.
 - **Resumen final, en pocas líneas**:
   - de dónde salió el esquema;
   - qué tablas entraron y con qué filtro;
@@ -185,6 +209,7 @@ node scripts/verify.js --schema <trabajo>/schema.json --config <trabajo>/diagram
 | `scripts/init-config.js` | Propone `diagram.config.json` (módulos y hubs) |
 | `scripts/build.js` | Genera el `.html` |
 | `scripts/verify.js` | Verifica el layout y, opcionalmente, toma capturas |
+| `scripts/export-png.js` | Exporta el `.html` a PNG de alta resolución (completo, por módulo o uno por cada módulo) con Playwright |
 | `scripts/lib/` | Grafo ELK compartido entre node y el navegador, la configuración y utilidades |
 | `assets/template.html` | La página: estilos, interacción y paleta de 12 colores por módulo |
 | `references/schema-format.md` | Formato de `schema.json` y `diagram.config.json` |
